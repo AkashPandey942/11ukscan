@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useUpload } from "@/hooks/useUpload";
 import { UploadZone } from "@/components/UploadZone";
 import { ProcessingCard } from "@/components/ProcessingCard";
@@ -51,10 +53,27 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Status badge */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs text-white/60 font-medium">Monzo Business</span>
+          <div className="flex items-center gap-3">
+            {/* Status badge */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs text-white/60 font-medium">Monzo Business</span>
+            </div>
+            <Link
+              href="/admin"
+              className="text-xs text-white/40 hover:text-white/70 px-3 py-1.5 rounded-full border border-white/10 hover:border-white/20 transition-colors"
+            >
+              Admin
+            </Link>
+            <button
+              onClick={() => {
+                document.cookie = "bankscan_auth=; path=/; max-age=0";
+                window.location.href = "/login";
+              }}
+              className="text-xs text-white/40 hover:text-white/70 px-3 py-1.5 rounded-full border border-white/10 hover:border-white/20 transition-colors"
+            >
+              Sign out
+            </button>
           </div>
         </div>
       </header>

@@ -16,6 +16,7 @@ simple get/set, which is sufficient for the async FastAPI context.
 from __future__ import annotations
 
 import logging
+from functools import lru_cache
 from typing import Dict, List, Optional
 from uuid import UUID
 
@@ -91,3 +92,18 @@ class InMemoryStatementRepository(AbstractRepository[ParsedStatement]):
     def count(self) -> int:
         """Return the number of statements currently in the store."""
         return len(self._store)
+
+
+@lru_cache(maxsize=1)
+def get_shared_repository() -> InMemoryStatementRepository:
+    """
+    Return a process-wide singleton repository instance.
+
+    StatementService previously defaulted to a brand-new
+    InMemoryStatementRepository() on every instantiation, so statements
+    saved during /upload were never visible to any later request (e.g. an
+    admin listing). Use this singleton everywhere the repository is wired
+    via dependency injection so saved statements stay visible for the
+    lifetime of the process.
+    """
+    return InMemoryStatementRepository()

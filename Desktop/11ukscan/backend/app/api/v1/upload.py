@@ -22,6 +22,7 @@ from fastapi.responses import JSONResponse
 from app.core.config import Settings, get_settings
 from app.core.exceptions import BankScanException
 from app.models.statement import ParsedStatement
+from app.repositories.in_memory_repository import get_shared_repository
 from app.schemas.upload import StatementInfoSchema, UploadSuccessResponse
 from app.services.file_service import FileService
 from app.services.statement_service import StatementService
@@ -44,7 +45,7 @@ def get_statement_service(settings: Settings = Depends(get_settings)) -> Stateme
     this would resolve the full object graph. For MVP, we build it here.
     The singleton repository is shared across requests via module-level state.
     """
-    return StatementService(settings)
+    return StatementService(settings, repository=get_shared_repository())
 
 
 @router.post(

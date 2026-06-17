@@ -182,3 +182,15 @@ class RecordNotFoundError(RepositoryError):
             error_code="RECORD_NOT_FOUND",
         )
         self.status_code = HTTPStatus.NOT_FOUND
+
+
+# ------------------------------------------------------------------ #
+# Admin Exceptions
+# ------------------------------------------------------------------ #
+
+
+class AdminAuthError(BankScanException):
+    """Raised when an admin endpoint is called without a valid X-Admin-Token."""
+
+    def __init__(self, message: str = "Missing or invalid admin token.") -> None:
+        super().__init__(message, error_code="ADMIN_AUTH_FAILED", status_code=HTTPStatus.UNAUTHORIZED)

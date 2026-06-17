@@ -40,3 +40,34 @@ export type UploadState =
   | { phase: "processing" }
   | { phase: "success"; data: UploadSuccessResponse }
   | { phase: "error"; message: string; code?: string };
+
+/** Mirrors backend/app/schemas/admin.py::ScanSummarySchema */
+export interface ScanSummary {
+  job_id: string;
+  bank_name: string;
+  account_holder: string;
+  period_start: string;
+  period_end: string;
+  transaction_count: number;
+  page_count: number;
+  warnings_count: number;
+  processed_at: string;
+}
+
+/** Mirrors backend/app/schemas/admin.py::AdminStatsSchema */
+export interface AdminStats {
+  total_scans: number;
+  total_transactions: number;
+  total_warnings: number;
+  banks: string[];
+}
+
+/** Mirrors backend/app/schemas/admin.py::ScanDetailSchema */
+export interface ScanDetail extends ScanSummary {
+  account_number: string;
+  sort_code: string;
+  statement_type: string;
+  warnings: string[];
+  total_credits: string;
+  total_debits: string;
+}

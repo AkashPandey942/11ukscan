@@ -5,10 +5,13 @@
  * Base URL is configured via NEXT_PUBLIC_API_BASE_URL environment variable.
  */
 
+import { AdminStats, ScanDetail, ScanSummary } from "@/types/statement";
 import { UploadSuccessResponse } from "@/types/statement";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+
+const ADMIN_API_TOKEN = process.env.NEXT_PUBLIC_ADMIN_API_TOKEN ?? "";
 
 /**
  * Upload a PDF file to the backend with progress tracking.
@@ -83,4 +86,40 @@ export function getCSVDownloadUrl(jobId: string): string {
  */
 export function getExcelDownloadUrl(jobId: string): string {
   return `${API_BASE_URL}/api/v1/download/excel/${jobId}`;
+}
+
+async function adminFetch<T>(path: string): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: { "X-Admin-Token": ADMIN_API_TOKEN },
+      cache: "no-store",
+    });
+  } catch {
+    throw new Error(
+      `Could not reach the backend at ${API_BASE_URL}. Make sure the server is running.`
+    );
+  }
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.message ?? `Request failed with status ${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+/** Fetch aggregate counters for the admin dashboard. */
+export function getAdminStats(): Promise<AdminStats> {
+  return adminFetch<AdminStats>("/api/v1/admin/stats");
+}
+
+/** Fetch a summary list of every scan processed since the backend process started. */
+export function getAdminScans(): Promise<ScanSummary[]> {
+  return adminFetch<ScanSummary[]>("/api/v1/admin/scans");
+}
+
+/** Fetch full detail (including financial totals) for one scan. */
+export function getAdminScanDetail(jobId: string): Promise<ScanDetail> {
+  return adminFetch<ScanDetail>(`/api/v1/admin/scans/${jobId}`);
 }

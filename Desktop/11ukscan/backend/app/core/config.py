@@ -81,6 +81,14 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = Field(default=60, description="JWT token expiry in minutes", gt=0)
 
     # ------------------------------------------------------------------ #
+    # Admin panel
+    # ------------------------------------------------------------------ #
+    ADMIN_API_TOKEN: str = Field(
+        default="change-me-in-production",
+        description="Shared-secret token required in the X-Admin-Token header for /api/v1/admin/* routes",
+    )
+
+    # ------------------------------------------------------------------ #
     # Computed / derived
     # ------------------------------------------------------------------ #
     @property
