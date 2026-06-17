@@ -29,9 +29,9 @@ logger = logging.getLogger(__name__)
 # Compiled regex patterns — compiled once at class load time
 # ------------------------------------------------------------------ #
 
-# Transaction date anchor: "01 Jan 2024" at start of line
+# Transaction date anchor: "01 Jan 2024" or "01/06/2026" at start of line
 _RE_TRANSACTION_DATE = re.compile(
-    r"^(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})",
+    r"^(\d{1,2}\s+[A-Za-z]{3}\s+\d{4}|\d{1,2}/\d{1,2}/\d{4})",
     re.MULTILINE,
 )
 
@@ -41,9 +41,16 @@ _RE_ACCOUNT_HOLDER = re.compile(
     re.IGNORECASE,
 )
 
-# Header: Statement period "DD Month YYYY to DD Month YYYY"
+# Header: Account holder name on the line directly after the statement period
+# (used when there is no "Account name:" label, e.g. "Business Account statement" format)
+_RE_ACCOUNT_HOLDER_AFTER_PERIOD = re.compile(
+    r"\d{1,2}/\d{1,2}/\d{4}\s*-\s*\d{1,2}/\d{1,2}/\d{4}\s*\n+\s*([^\n]+)",
+)
+
+# Header: Statement period "DD Month YYYY to DD Month YYYY" or "DD/MM/YYYY - DD/MM/YYYY"
 _RE_PERIOD = re.compile(
-    r"(\d{1,2}\s+[A-Za-z]+\s+\d{4})\s+to\s+(\d{1,2}\s+[A-Za-z]+\s+\d{4})",
+    r"(\d{1,2}\s+[A-Za-z]+\s+\d{4})\s+to\s+(\d{1,2}\s+[A-Za-z]+\s+\d{4})"
+    r"|(\d{1,2}/\d{1,2}/\d{4})\s*-\s*(\d{1,2}/\d{1,2}/\d{4})",
     re.IGNORECASE,
 )
 
@@ -71,15 +78,23 @@ _RE_AMOUNT = re.compile(
     r"(-?£?[\d,]+\.\d{2})",
 )
 
+# A line that is *only* a statement period range, e.g. "17/05/2025 - 01/06/2026".
+# Must be excluded from transaction parsing — it has the same date-prefix shape
+# as a transaction row but is header content, not a table row.
+_RE_PERIOD_ONLY_LINE = re.compile(
+    r"^\d{1,2}/\d{1,2}/\d{4}\s*-\s*\d{1,2}/\d{1,2}/\d{4}\s*$",
+)
+
 
 @BankParserRegistry.register
 class MonzoBusinessParser(AbstractBankStatementParser):
     """
     Parser for Monzo Business Current Account PDF statements.
 
-    Fingerprint strategy: Page 1 must contain both "Monzo" and
-    "Business Current Account" (case-insensitive). This uniquely
-    identifies Monzo Business statements without false positives.
+    Fingerprint strategy: Page 1 must contain both "MONZGB2L" (Monzo's
+    BIC, always present and not rendered as a logo image) and
+    "Business Account" (case-insensitive). This uniquely identifies
+    Monzo Business statements without false positives.
 
     Extraction strategy:
     1. Header: Named-capture regex on page 1 full text.
@@ -89,7 +104,22 @@ class MonzoBusinessParser(AbstractBankStatementParser):
     """
 
     bank_name: str = "Monzo Business"
-    fingerprints: List[str] = ["Monzo", "Business Current Account"]
+    fingerprints: List[str] = ["Business Account"]
+
+    def can_parse(self, pages: List[PageText]) -> bool:
+        """
+        Recognise either Monzo Business export style:
+        - Older style: literal "Monzo" text + "Business Current Account".
+        - Current style: Monzo's BIC "MONZGB2L" (the logo is image-only,
+          so "Monzo" text is not extractable) + "Business Account".
+        """
+        if not pages:
+            return False
+
+        page_one_text = pages[0].text.lower()
+        old_style = "monzo" in page_one_text and "business current account" in page_one_text
+        new_style = "monzgb2l" in page_one_text and "business account" in page_one_text
+        return old_style or new_style
 
     # ------------------------------------------------------------------ #
     # Header extraction
@@ -135,6 +165,11 @@ class MonzoBusinessParser(AbstractBankStatementParser):
         match = _RE_ACCOUNT_HOLDER.search(text)
         if match:
             return match.group(1).strip()
+        # Fallback: name printed on the line directly after the statement period
+        # (no "Account name:" label in this export format)
+        after_period = _RE_ACCOUNT_HOLDER_AFTER_PERIOD.search(text)
+        if after_period:
+            return after_period.group(1).strip()
         # Fallback: try looking for a name-like pattern after "Name:"
         fallback = re.search(r"Name[\s:]+([A-Z][a-zA-Z\s&'.-]{2,60})", text)
         if fallback:
@@ -147,8 +182,11 @@ class MonzoBusinessParser(AbstractBankStatementParser):
         if not match:
             raise HeaderExtractionError("statement_period")
 
-        start = parse_date(match.group(1))
-        end = parse_date(match.group(2))
+        groups = match.groups()
+        start_str, end_str = (groups[0], groups[1]) if groups[0] else (groups[2], groups[3])
+
+        start = parse_date(start_str)
+        end = parse_date(end_str)
 
         if start is None:
             raise HeaderExtractionError("period_start_date")
@@ -239,6 +277,9 @@ class MonzoBusinessParser(AbstractBankStatementParser):
             for raw_line in page.lines:
                 line = raw_line.strip()
                 if not line:
+                    continue
+
+                if _RE_PERIOD_ONLY_LINE.match(line):
                     continue
 
                 date_match = _RE_TRANSACTION_DATE.match(line)

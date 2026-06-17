@@ -8,24 +8,24 @@ uvicorn[standard]==0.32.1
 python-multipart==0.0.12        # Required for FastAPI file uploads
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-pydantic==2.10.3
-pydantic-settings==2.6.1
+pydantic>=2.10.3
+pydantic-settings>=2.6.1
 python-dotenv==1.0.1
 
 # ── PDF Processing ─────────────────────────────────────────────────────────────
-pymupdf==1.24.14                # PyMuPDF (fitz) — primary PDF engine
+pymupdf>=1.24.14                # PyMuPDF (fitz) — primary PDF engine
 # Note: python-magic requires libmagic C library (complex on Windows).
 # File type validation uses %PDF- magic bytes + PyMuPDF instead.
 # To add python-magic on Linux/Mac: pip install python-magic
 # To add python-magic on Windows: pip install python-magic-bin
 
 # ── OCR Fallback ───────────────────────────────────────────────────────────────
-pytesseract==0.3.10
+pytesseract>=0.3.13
 pdf2image==1.17.0
 Pillow>=10.2.0
 
 # ── Data Processing ────────────────────────────────────────────────────────────
-pandas==2.2.3
+pandas>=2.2.3
 
 # ── Excel Export ───────────────────────────────────────────────────────────────
 openpyxl==3.1.5
